@@ -6,11 +6,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<SchoolContext>(options =>
+    options.UseSqlServer(connectionString));
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddRoleManager<RoleManager<IdentityRole>>()
+    .AddDefaultUI()
+    .AddDefaultTokenProviders()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllersWithViews();
 
@@ -37,8 +42,17 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
+    name: "areaRoute",
+    pattern: "{area:exists}/{controller=Home}/{action=Index}/{id?}");
+app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();
+
+using (var scope = app.Services.CreateScope())
+{
+    var schoolContext = scope.ServiceProvider.GetRequiredService<SchoolContext>();
+    DbInitializer.Initialize(schoolContext);
+}
 
 app.Run();
